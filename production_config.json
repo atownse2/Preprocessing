@@ -1,0 +1,40 @@
+{
+  "20UL18": {
+    "SIM": {
+      "doc": "https://twiki.cern.ch/twiki/bin/view/CMS/RunIISummer20UL18SIM",
+      "release": "CMSSW_10_6_17_patch1",
+      "cmsDriver": "cmsDriver.py step1 --mc --eventcontent RAWSIM --runUnscheduled --datatier GEN-SIM --conditions 106X_upgrade2018_realistic_v11_L1v1 --beamspot Realistic25ns13TeVEarly2018Collision --step SIM --nThreads 8 --geometry DB:Extended --era Run2_2018  --filein file:step-1.root --fileout file:step0.root",
+      "input": "GEN"
+    },
+    "DIGI": {
+      "doc": "https://twiki.cern.ch/twiki/bin/view/CMS/RunIISummer20UL18DIGIPremix",
+      "release": "CMSSW_10_6_17_patch1",
+      "cmsDriver": "cmsDriver.py step1 --mc --eventcontent PREMIXRAW --runUnscheduled --datatier GEN-SIM-DIGI --conditions 106X_upgrade2018_realistic_v11_L1v1 --step DIGI,DATAMIX,L1,DIGI2RAW --procModifiers premix_stage2 --nThreads 8 --geometry DB:Extended --datamix PreMix --era Run2_2018  --filein file:step-1.root --fileout file:step0.root --pileup_input \"dbs:/Neutrino_E-10_gun/RunIISummer20ULPrePremix-UL18_106X_upgrade2018_realistic_v11_L1v1-v2/PREMIX\"",
+      "input": "SIM"
+    },
+    "HLT": {
+      "doc": "https://twiki.cern.ch/twiki/bin/view/CMS/RunIISummer20UL18HLT",
+      "release": "CMSSW_10_2_16_UL",
+      "cmsDriver": "cmsDriver.py step1 --mc --eventcontent RAWSIM --datatier GEN-SIM-RAW --conditions 102X_upgrade2018_realistic_v15 --customise_commands \"process.source.bypassVersionCheck = cms.untracked.bool(True)\" --step HLT:2018v32 --nThreads 8 --geometry DB:Extended --era Run2_2018  --filein file:step-1.root --fileout file:step0.root",
+      "input": "DIGI"
+    },
+    "RECO": {
+      "doc": "https://twiki.cern.ch/twiki/bin/view/CMS/RunIISummer20UL18RECO",
+      "release": "CMSSW_10_6_17_patch1",
+      "cmsDriver": "cmsDriver.py step1 --mc --eventcontent AODSIM --runUnscheduled --datatier AODSIM --conditions 106X_upgrade2018_realistic_v11_L1v1 --step RAW2DIGI,L1Reco,RECO,RECOSIM,EI --nThreads 8 --geometry DB:Extended --era Run2_2018  --filein file:step-1.root --fileout file:step0.root",
+      "input": "HLT"
+    },
+    "MAODv2": {
+      "doc": "https://twiki.cern.ch/twiki/bin/view/CMS/RunIISummer20UL18MiniAODv2",
+      "release": "CMSSW_10_6_20",
+      "cmsDriver": "cmsDriver.py step1 --mc --eventcontent MINIAODSIM --runUnscheduled --datatier MINIAODSIM --conditions 106X_upgrade2018_realistic_v16_L1v1 --step PAT --procModifiers run2_miniAOD_UL --nThreads 8 --geometry DB:Extended --era Run2_2018  --filein file:step-1.root --fileout file:step0.root",
+      "input": "RECO"
+    },
+    "NAODv9": {
+      "doc": "https://gitlab.cern.ch/cms-nanoAOD/nanoaod-doc/-/wikis/Instructions/Private-production",
+      "release" : "CMSSW_10_6_27",
+      "cmsDriver": "cmsDriver.py NANO -s NANO --mc --conditions 106X_upgrade2018_realistic_v16_L1v1 --era Run2_2018,run2_nanoAOD_106Xv2 --eventcontent NANOAODSIM --datatier NANOAODSIM --customise_commands=\"process.add_(cms.Service('InitRootHandlers', EnableIMT = cms.untracked.bool(False)));process.MessageLogger.cerr.FwkReport.reportEvery=1000\"  --filein file:step-1.root --fileout file:step0.root -n -1 --no_exec",
+      "input": "MAODv2"
+    }
+  }
+}
