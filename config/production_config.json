@@ -1,5 +1,9 @@
 {
   "20UL18": {
+    "wmLHEGEN": {
+      "doc" : "https://twiki.cern.ch/twiki/bin/view/CMS/RunIISummer20UL18wmLHEGEN",
+      "release": "CMSSW_10_6_19_patch3"
+    },
     "SIM": {
       "doc": "https://twiki.cern.ch/twiki/bin/view/CMS/RunIISummer20UL18SIM",
       "release": "CMSSW_10_6_17_patch1",

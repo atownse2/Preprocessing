@@ -1,93 +1,119 @@
 import sys
 import os
 
+import textwrap
+
 top_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(top_dir)
 
 from preprocessing.utils import signal_info as si
 from preprocessing.utils import tuple_info as ti
 from preprocessing.utils import submit_jobs as sj
-from preprocessing.utils import clean_up_files as clean 
+from preprocessing.utils import clean_up_files as clean
+
+from config import sample_info
+from setup import try_command
 
 # Define paths
-test_dir = f'{top_dir}/test/MiniAOD/'
+USER = os.getenv('USER')
+output_base = f"/cms/cephfs/data/users/{USER}/RSTriPhoton"
+test_base = f'{top_dir}/test/preprocessing/'
+if not os.path.isdir(test_base):
+    os.makedirs(test_base)
 
-# gridpackdir = '/hadoop/store/user/atownse2/RSTriPhoton/gridpacks/'
-gridpackdir = '/hadoop/store/user/atownse2/RSTriPhoton/testgridpacks/'
-mgdir = f'{top_dir}/preprocessing/tools/genproductions/bin/MadGraph5_aMCatNLO/'
-run_gridpack = f"{top_dir}/preprocessing/tools/scripts/run_gridpack.sh"
+tools_dir = f"{top_dir}/preprocessing/tools"
+script_dir = f"{tools_dir}/scripts"
 
-# Temporary directory for input/output files (maybe not necessary...)
-tmp_dir = f'/scratch365/{os.environ["USER"]}/tmp'
-if not os.path.isdir(tmp_dir):
-    os.makedirs(tmp_dir)
+# For gridpack generation
+gridpackdir = f"{output_base}/gridpacks"
+if not os.path.isdir(gridpackdir):
+    os.makedirs(gridpackdir)
+
+mgdir = f'{tools_dir}/genproductions/bin/MadGraph5_aMCatNLO/'
+run_gridpack = f"{scripts_dir}/run_gridpack.sh"
 
 # For event simulation and reconstruction
-era_tags = { "2018": "RunIISummer20UL18", "2017": "RunIISummer20UL17", "2016": "RunIISummer20UL16", "2016APV": "RunIISummer20UL16APV" }
-simrecodir = lambda year : f'{top_dir}/preprocessing/tools/EXO-MCsampleProductions/FullSimulation/{era_tags[year]}'
-run_event_generation = f"{top_dir}/preprocessing/tools/scripts/run_event_generation.sh"
+release_dir = f"{tools_dir}/releases"
+config_dir = f"{tools_dir}/configs"
+run_event_generation = f"{script_dir}/run_event_generation.sh"
 
 # Gridpacks
-def get_gridpack(signal_point, remake=False, batch=False):
-    fragment = si.signal_point_tag(signal_point)
-    gridpath = gridpackdir + fragment + '_slc7_amd64_gcc10_CMSSW_12_4_8_tarball.tar.xz'
-    M_BKK = signal_point['M_BKK']
-    M_R = signal_point['M_R']
-    arguments = f"{M_BKK} {M_R} {mgdir} {gridpath} {batch}"
-    if not os.path.exists(gridpath) or remake:
-        if os.path.exists(f'{mgdir}/{fragment}*'):
-            os.system(f'rm -rf {mgdir}/{fragment}*')
-        if batch:
-            result = sj.submit_condor(run_gridpack,
-                                    arguments,
-                                    f'{fragment}_gridpack')
-            return None
-        else:
-            result = sj.submit_interactive(run_gridpack,
-                                            arguments)
-    return gridpath
+def get_gridpack(signal_point, remake=False, condor=False, test=False):
 
+    fragment = si.signal_point_tag(signal_point)
+    if test: fragment += "_test"
+
+    gridpath = f'{gridpackdir}/{fragment}_slc7_amd64_gcc10_CMSSW_12_4_8_tarball.tar.xz'
+    if os.path.exists(gridpath):
+        if remake:
+            os.system(f'rm -rf {gridpath}')
+        else:
+            return gridpath
+
+    arguments = f"{signal_point['M_BKK']} {signal_point['M_R']} {mgdir} {gridpath}"
+    if condor:
+        result = sj.submit_condor(run_gridpack, arguments, f'{fragment}_gridpack')
+        return None
+    else:
+        from setup import try_command
+        try_command(f"{run_gridpack} {arguments}", fail_message="Failed to generate gridpack")
+        return gridpath
 
 def generate_signal_point(
         signal_point,
         year,
         n_events_total,
         n_events_per_file=1000,
+        output_format="MLNanoAODv9",
         gridpack_only=False,
         remake_gridpacks=False,
-        saveAOD="False",
-        batch=False,
+        saveAOD=False,
+        saveMAOD=False,
+        condor=False,
         test=False):
 
-    outdir = ti.get_tuple_dir('signal', 'MiniAOD')
+    outdir = f"{output_base}/{output_format}"
     if test:
-        outdir = test_dir
+        outdir = f"{test_base}/{output_format}"
     
+    fragment = si.signal_point_tag(signal_point)
+    dataset = sample_info.Dataset("signal", f"{fragment}_{year}", output_format)
+    dataset.update_sample_info(output_base, test=test)
+
+    if saveAOD:
+        AOD_dataset = sample_info.Dataset("signal", f"{fragment}_{year}", "AOD")
+        AOD_outdir = f"{output_base}/AOD"
+    
+    if output_format == "MiniAODv2": saveMAOD = True
+    if saveMAOD:
+        MAOD_dataset = sample_info.Dataset("signal", f"{fragment}_{year}", "MiniAODv2")
+        MAOD_outdir = f"{output_base}/MiniAODv2"
+
     dataset = si.signal_dataset(signal_point, year)
     gridpack_path = get_gridpack(signal_point, remake=remake_gridpacks, batch=batch)
 
     if gridpack_only or gridpack_path is None:
         return
 
-    if not test:
-        cleaner = clean.FileCleaner()
-        cleaner.clean_up_files('signal', 'MiniAOD', datasets=[dataset])
+    # if not test:
+    #     cleaner = clean.FileCleaner()
+    #     cleaner.clean_up_files('signal', 'MiniAOD', datasets=[dataset])
 
-        MiniAOD_info = cleaner.good_files['signal'][dataset]['MiniAOD']
+    #     MiniAOD_info = cleaner.good_files['signal'][dataset]['MiniAOD']
 
-        existing_files = MiniAOD_info['files'].keys()
-        existing_events = MiniAOD_info['n_events']
-    else:
-        existing_files = []
-        existing_events = 0
+    #     existing_files = MiniAOD_info['files'].keys()
+    #     existing_events = MiniAOD_info['n_events']
+    # else:
+    #     existing_files = []
+    #     existing_events = 0
 
-    n_to_generate = n_events_total - existing_events
+    n_to_generate = n_events_total
     ibatch = -1
     while n_to_generate > 0:
         ibatch += 1
 
-        filename = f"{dataset}_MiniAOD_{ibatch}.root"
-        if filename in existing_files:
+        outfile = f"{dataset.name}_{ibatch}.root"
+        if outfile in dataset.files:
             continue
 
         if n_to_generate < n_events_per_file:
@@ -96,19 +122,39 @@ def generate_signal_point(
             n = n_events_per_file
         
         print(f"Generating {n} events for {dataset}...")
-        outpath = f"{outdir}/{filename}"
-        arguments = f"{simrecodir(year)} {tmp_dir} {gridpack_path} {outpath} {year} {n} {saveAOD}"
 
-        if batch:
-            result = sj.submit_condor(run_event_generation,
-                                    arguments,
-                                    f"{dataset}_{ibatch}")
+        tmpdir = f"/tmp/{USER}/{dataset.name}_{ibatch}"
+        GENargs = f"gridpack={gridpack_path} nEvents={n}"
+
+        generate_events = textwrap.dedent(f"""
+            #!/bin/bash
+            ./{run_event_generation} {tmpdir} {release_dir} {config_dir} {GENargs}
+            """)
+
+        if saveAOD:
+            generate_events += f"mv {tmpdir}/AOD-0000.root {AOD_outdir}/{AOD_dataset.name}_{ibatch}.root\n"
+        if saveMAOD:
+            generate_events += f"cp {tmpdir}/MAOD-0000.root {MAOD_outdir}/{MAOD_dataset.name}_{ibatch}.root\n"
+        
+        if output_format == "MLNanoAODv9":
+            nano_prod = f"{scripts_dir}/run_MLNanoAODv9.sh"
+            generate_events += f"./{nano_prod} {tmpdir}/MAOD-0000.root NAOD-0000.root\n -1 True\n"
+            generate_events += f"mv {tmpdir}/NAOD-0000.root {outdir}/{outfile}\n"
+        elif output_format == "MiniAODv2":
+            pass
         else:
-            result = sj.submit_interactive(run_event_generation,
-                                            arguments)
+            raise ValueError(f"Output format {output_format} not recognized")
+
+        # Clean up
+        generate_events += f"rm -rf {tmpdir}\n"
+        generate_events += f"echo 'Done'\n"
+
+        if condor:
+            sj.submit_condor(generate_events, f'{dataset.name}_{ibatch}', test=test)
+        else:
+            try_command(generate_events)
 
         n_to_generate -= n
-
         if test:
             break
 

@@ -72,10 +72,9 @@ def setup_prod(eras):
             continue
 
         for prod_name, prod_config in config[era].items():
-            release = prod_config["release"]
-            cmsDriver_cmd = prod_config["cmsDriver"]
-            input_prod = prod_config["input"]
 
+            # Set up CMSSW release
+            release = prod_config["release"]
             if not os.path.exists(f"{release_dir}/{release}"):
                 print(f"Setting up {release}")
                 try_command(f"""
@@ -86,19 +85,24 @@ def setup_prod(eras):
                     scram b"""
                 )
             
+            # Create config file
+            if not "cmsDriver" in prod_config: continue
             config_file = f"{config_dir}/{era}_{prod_name}_cfg.py"
             if not os.path.exists(config_file):
                 print(f"Creating config file for {prod_name}")             
+                input_prod = prod_config["input"]
                 infile = f"{input_prod}-0000.root"
                 outfile = f"{prod_name}-0000.root"
 
+                cmsDriver_cmd = prod_config["cmsDriver"]
                 cmsDriver_cmd = cmsDriver_cmd.replace("file:step-1.root", f"file:{infile}").replace("step-0.root", outfile)
                 cmsDriver_cmd += f" --python_filename {config_file}"
                 if "--no_exec" not in cmsDriver_cmd: cmsDriver_cmd += " --no_exec"
                 try_command(f"""
                     cd {release_dir}/{release}/src
                     eval `scram runtime -sh`
-                    {cmsDriver_cmd}"""
+                    {cmsDriver_cmd}
+                    scram b"""
                 )
 
 eras = ["20UL18"]
