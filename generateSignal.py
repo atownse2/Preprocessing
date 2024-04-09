@@ -11,7 +11,7 @@ from preprocessing.utils import tuple_info as ti
 from preprocessing.utils import submit_jobs as sj
 from preprocessing.utils import clean_up_files as clean
 
-from config import sample_info
+from data_tools import sample_info
 from setup import try_command
 
 # Define paths

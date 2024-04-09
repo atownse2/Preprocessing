@@ -14,7 +14,7 @@ top_dir = "/afs/crc.nd.edu/user/a/atownse2/Public/RSTriPhoton"
 input_format = "MiniAODv2"
 output_format = "MLNanoAODv9"
 
-samples_path = '{}/samples.yml'.format(top_dir)
+samples_path = '{}/config/samples.yml'.format(top_dir)
 with open(samples_path, 'r') as f:
     samples = yaml.safe_load(f)
 
@@ -42,15 +42,17 @@ processing = Category(
     memory=1000
 )
 
+release_dir = "/afs/crc.nd.edu/user/a/atownse2/Public/MLDiphotons/MLNanoAODv9/CMSSW_10_6_19_patch2"
+
 workflows = []
 for name, info in datasets.items():
     print("Adding dataset: ", name, " to workflows")
     das_dataset = info[input_format].split(':')[1]
 
     if info['dType'] == 'data':
-        run_config = 'Prod_MLNanoAODv9_data.py'
+        run_config = release_dir + '/src/Prod_MLNanoAODv9_data.py'
     else:
-        run_config = 'Prod_MLNanoAODv9_mc.py'
+        run_config = release_dir + '/src/Prod_MLNanoAODv9_mc.py'
 
     MLNano = Workflow(
         label='{}_{}'.format(name.replace('-','_'), output_format),
@@ -60,8 +62,8 @@ for name, info in datasets.items():
             file_based=True,
         ),
         command='cmsRun {}'.format(run_config),
-        sandbox=cmssw.Sandbox(release='~/Public/MLDiphotons/MLNanoAODv9/CMSSW_10_6_19_patch2'),
-        merge_size='3.5G',
+        sandbox=cmssw.Sandbox(release=release_dir),
+        merge_size='256M',
         category=processing,
         outputs=['output.root']
     )

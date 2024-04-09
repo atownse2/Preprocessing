@@ -1,35 +1,20 @@
 import os
 import sys
+import subprocess
+
+import json
 
 preprocessing_dir = os.path.dirname(os.path.abspath(__file__))
 top_dir = os.path.dirname(preprocessing_dir)
 
-# Check if config directory exists in parent
-config_dir = f"{top_dir}/config"
-if not os.path.exists(config_dir):
-    # Checkout the config repository
-    os.system(f"git clone https://github.com/atownse2/DataConfig.git {config_dir}")
-
-# Initialize tools
+# Initialize directories
 tools_dir = f"{top_dir}/preprocessing/tools"
-if not os.path.exists(tools_dir):
-    os.makedirs(tools_dir)
-
-# Checkout genproductions
-genproductions_dir = f"{tools_dir}/genproductions"
-if not os.path.exists(genproductions_dir):
-    os.system(f"git clone https://github.com/atownse2/genproductions.git {genproductions_dir}")
-
-# Set up CMSSW releases and configs
-release_dir = f"{tools_dir}/releases"
-if not os.path.exists(release_dir):
-    os.makedirs(release_dir)
-
+release_base = f"{tools_dir}/releases"
 config_dir = f"{tools_dir}/configs"
-if not os.path.exists(config_dir):
-    os.makedirs(config_dir)
+for d in [tools_dir, release_base, config_dir]:
+    if not os.path.exists(d):
+        os.makedirs(d)
 
-import subprocess
 def try_command(cmd, fail_message=None, exit=True):
     try:
         output = subprocess.check_call(cmd, shell=True)
@@ -45,6 +30,19 @@ def try_command(cmd, fail_message=None, exit=True):
         else:
             return False
 
+def ensure_dataTools():
+    # Check if config directory exists in parent
+    _dir = f"{top_dir}/data_tools"
+    if not os.path.exists(_dir):
+        # Checkout the config repository
+        os.system(f"git clone https://github.com/atownse2/DataTools.git {_dir}")
+
+def ensure_genproductions():
+    # Checkout genproductions
+    genproductions_dir = f"{tools_dir}/genproductions"
+    if not os.path.exists(genproductions_dir):
+        os.system(f"git clone https://github.com/atownse2/genproductions.git {genproductions_dir}")
+
 def proxy_init():
     # Initialize proxy
     print("Check if proxy exists")
@@ -57,9 +55,18 @@ def proxy_init():
             "For help see: https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookStartingGrid#ObtainingCert"
         )
 
-def setup_prod(eras):
-    import json
+def ensure_cmssw(release):
+    if not os.path.exists(f"{release_base}/{release}"):
+        print(f"Setting up {release}")
+        try_command(f"""
+            cd {release_base}
+            scram p CMSSW {release}
+            cd {release}/src
+            eval `scram runtime -sh`
+            scram b"""
+        )
 
+def ensure_configs(eras):
     proxy_init()
 
     config_file = f"{preprocessing_dir}/production_config.json"
@@ -75,15 +82,7 @@ def setup_prod(eras):
 
             # Set up CMSSW release
             release = prod_config["release"]
-            if not os.path.exists(f"{release_dir}/{release}"):
-                print(f"Setting up {release}")
-                try_command(f"""
-                    cd {release_dir}
-                    scram p CMSSW {release}
-                    cd {release}/src
-                    eval `scram runtime -sh`
-                    scram b"""
-                )
+            ensure_cmssw(release)
             
             # Create config file
             if not "cmsDriver" in prod_config: continue
@@ -99,14 +98,35 @@ def setup_prod(eras):
                 cmsDriver_cmd += f" --python_filename {config_file}"
                 if "--no_exec" not in cmsDriver_cmd: cmsDriver_cmd += " --no_exec"
                 try_command(f"""
-                    cd {release_dir}/{release}/src
+                    cd {release_base}/{release}/src
                     eval `scram runtime -sh`
                     {cmsDriver_cmd}
                     scram b"""
                 )
 
-eras = ["20UL18"]
-setup_prod(eras)
+def ensure_MLPhotons():
+    # Checkout MLPhotons
+    MLPhotons_dir = f"{tools_dir}/MLPhotons"
+    if not os.path.exists(MLPhotons_dir):
+        os.makedirs(MLPhotons_dir)
+        try_command(f"""
+            cd {MLPhotons_dir}
+            cmsrel CMSSW_10_6_19_patch2
+        """)
+
+        try_command(f"""
+            cd {MLPhotons_dir}/CMSSW_10_6_19_patch2/src
+            git clone https://github.com/atownse2/MLPhotons.git .
+            eval `scram runtime -sh`
+            scram b
+            """)
 
 
+if __name__ == "__main__":
 
+    ensure_dataTools()
+    ensure_genproductions()
+    ensure_MLPhotons()
+
+    eras = ["20UL18"]
+    ensure_configs(eras)

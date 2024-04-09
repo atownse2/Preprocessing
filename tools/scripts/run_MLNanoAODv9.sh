@@ -13,7 +13,7 @@ isMC=$4
 
 filename=$(basename "$outfile")
 
-tmpdir=/tmp/atownse2_MLNanoAODv9
+tmpdir=/tmp/${USER}_MLNanoAODv9
 tmpoutfile=$tmpdir/$filename
 
 if [ ! -d "$tmpdir" ]; then
@@ -31,12 +31,10 @@ else
 fi
 
 filename=$(basename "$outfile")
-
 echo "Running MLNanoAODv9 $dtag production for file $filename"
 
-cd /afs/crc.nd.edu/user/a/atownse2/Public/MLDiphotons/MLNanoAODv9/CMSSW_10_6_19_patch2/src
+toolsdir=$(dirname "$(dirname "$0")")
+cd $toolsdir/MLPhotons/CMSSW_10_6_19_patch2/src
 eval `scramv1 runtime -sh` # cmsenv is an alias not on the workers
 
-cmsRun Prod_MLNanoAODv9_$dtag.py inputFiles=$infiles outputFile=$tmpoutfile maxEvents=$maxEvents
-mv $tmpoutfile $outfile
-echo "Output written to $outfile"
+cmsRun Prod_MLNanoAODv9_$dtag.py inputFiles=$infiles outputFile=$outfile maxEvents=$maxEvents
