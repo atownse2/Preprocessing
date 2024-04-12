@@ -126,3 +126,6 @@ def ensure_MLPhotons():
             eval `scram runtime -sh`
             scram b
             """)
+
+if __name__ == "__main__":
+    ensure_dataTools()
