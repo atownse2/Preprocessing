@@ -207,7 +207,7 @@ if __name__ == "__main__":
     parser.add_argument('--n_events_per_file', '-nf', type=int, default=1000, help='Number of events per file.')
     parser.add_argument('--m_m' , nargs=2, type=float, metavar=('M_BKK', 'M_R'), help='Specify a single point in the mass grid to generate events for.')
     parser.add_argument('--m_moe', nargs=2, type=float, metavar=('M_BKK', 'MOE'), help='Specify a single point in the mass grid to generate events for.')
-    parser.add_argument('--mass_grid_version', '-mgv', type=str, default='new', help='Specify the mass grid version to use. Default is current.')
+    parser.add_argument('--mass_grid_version', type=str, default='current', help='Specify the mass grid version to use. Default is current.')
     parser.add_argument('--year', type=str, default='2018', help='Specify the era to use for the fragment. Default is 2018.')
     parser.add_argument('--output_format', '-f', type=str, default='MLNanoAODv9', help='Specify the output format. Default is MLNanoAODv9.')
     parser.add_argument('--output_base', '-o', type=str, default=sample_info.vast_storage, help='Specify the output base directory. Default is vast.')
