@@ -3,3 +3,4 @@ old/
 tools/releases/
 tools/genproductions/
 tools/MLPhotons/
+*.pyc

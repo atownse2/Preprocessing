@@ -19,7 +19,7 @@ def try_command(cmd, fail_message=None, exit=True):
     try:
         output = subprocess.check_call(cmd, shell=True)
         return f"Exit code: {output}"
-    except subprocess.CalledProcessError:
+    except:
         if fail_message:
             print(fail_message)
         else:
@@ -39,6 +39,7 @@ def ensure_dataTools():
 
 def ensure_genproductions():
     # Checkout genproductions
+    print("Setting up genproductions")
     genproductions_dir = f"{tools_dir}/genproductions"
     if not os.path.exists(genproductions_dir):
         os.system(f"git clone https://github.com/atownse2/genproductions.git {genproductions_dir}")
@@ -65,6 +66,10 @@ def ensure_cmssw(release):
             eval `scram runtime -sh`
             scram b"""
         )
+
+era_map = {
+    "2018": "20UL18",
+} # For now, will want to standardize this later
 
 def ensure_configs(eras):
     proxy_init()
@@ -94,7 +99,7 @@ def ensure_configs(eras):
                 outfile = f"{prod_name}-0000.root"
 
                 cmsDriver_cmd = prod_config["cmsDriver"]
-                cmsDriver_cmd = cmsDriver_cmd.replace("file:step-1.root", f"file:{infile}").replace("step-0.root", outfile)
+                cmsDriver_cmd = cmsDriver_cmd.replace("file:step-1.root", f"file:{infile}").replace("step0.root", outfile)
                 cmsDriver_cmd += f" --python_filename {config_file}"
                 if "--no_exec" not in cmsDriver_cmd: cmsDriver_cmd += " --no_exec"
                 try_command(f"""
@@ -106,6 +111,7 @@ def ensure_configs(eras):
 
 def ensure_MLPhotons():
     # Checkout MLPhotons
+    print("Setting up MLPhotons")
     MLPhotons_dir = f"{tools_dir}/MLPhotons"
     if not os.path.exists(MLPhotons_dir):
         os.makedirs(MLPhotons_dir)
@@ -120,13 +126,3 @@ def ensure_MLPhotons():
             eval `scram runtime -sh`
             scram b
             """)
-
-
-if __name__ == "__main__":
-
-    ensure_dataTools()
-    ensure_genproductions()
-    ensure_MLPhotons()
-
-    eras = ["20UL18"]
-    ensure_configs(eras)

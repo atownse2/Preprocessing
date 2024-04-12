@@ -8,60 +8,43 @@ releasedir=$2
 cfgdir=$3
 GENargs=$4
 
-if [ -d $tmpdir ]
-then
-  echo "Removing existing temporary directory."
-  rm -rf $tmpdir
-  mkdir $tmpdir
-else
+if [ ! -d $tmpdir ]; then
   echo "Creating temporary directory"
   mkdir $tmpdir
 fi
 
+run_step() {
+  local step=$1
+  local release=$2
+  local cfg_args=$3
+
+  # If output exists skip (useful for debugging)
+  if [ -f "$tmpdir/${step}-0000.root" ]; then
+    echo "${step} output file already exists, skipping."
+    return
+  fi
+
+  echo "${step} step"
+  cd $releasedir/${release}/src
+  eval `scramv1 runtime -sh`
+  cd $tmpdir
+  cmsRun $cfgdir/20UL18_${step}_cfg.py $cfg_args
+
+  if [ ! -f "$tmpdir/${step}-0000.root" ]; then
+    echo "${step} output file not found, exiting."
+    exit 1
+  fi
+}
+
 echo "Starting GEN to MiniAOD steps"
 
-echo "GEN step"
-cd $releasedir/CMSSW_10_6_19_patch3/src
-eval `scramv1 runtime -sh`
-cd $wkdir # Not sure why this is needed
-cmsRun $cfgdir/20UL18_wmLHEGEN_cfg.py $GENargs
-
-# Check exit status
-if [ $? -ne 0 ]
-then
-  echo "GEN step failed with exit code $?, exiting."
-  exit 1
-fi
-
-echo "SIM step"
-cd $releasedir/CMSSW_10_6_17_patch1/src
-eval `scramv1 runtime -sh`
-cmsRun $cfgdir/20UL18_SIM_cfg.py
-rm $tmpdir/GEN-0000.root
-
-echo "DIGI step"
-cd $releasedir/CMSSW_10_6_17_patch1/src
-eval `scramv1 runtime -sh`
-cmsRun $cfgdir/20UL18_DIGI_cfg.py
-rm $tmpdir/SIM-0000.root
-
-echo "HLT step"
-cd $releasedir/CMSSW_10_2_16_UL/src
-eval `scramv1 runtime -sh`
-cmsRun $cfgdir/20UL18_HLT_cfg.py
-rm $tmpdir/DIGI-0000.root
-
-echo "RECO step"
-cd $releasedir/CMSSW_10_6_17_patch1/src
-eval `scramv1 runtime -sh`
-cmsRun $cfgdir/20UL18_RECO_cfg.py
-rm $tmpdir/HLT-0000.root
-
-echo "MiniAOD step"
-cd $releasedir/CMSSW_10_6_17_patch1/src
-eval `scramv1 runtime -sh` 
-cmsRun $cfgdir/20UL18_MAOD_cfg.py
+run_step "wmLHEGEN" "CMSSW_10_6_17_patch1" $GENargs
+run_step "SIM" "CMSSW_10_6_17_patch1"
+run_step "DIGI" "CMSSW_10_6_17_patch1"
+run_step "HLT" "CMSSW_10_2_16_UL"
+run_step "RECO" "CMSSW_10_6_17_patch1"
+run_step "MAODv2" "CMSSW_10_6_20"
 
 echo "Done with GEN to MiniAOD steps"
-echo "Output is in $tmpdir"
+echo "Output is in $tmpdir, you need to do some cleanup..."
 exit 0
