@@ -71,7 +71,9 @@ era_map = {
     "2018": "20UL18",
 } # For now, will want to standardize this later
 
-def ensure_configs(eras):
+def ensure_configs(years):
+    eras = [era_map[year] for year in years]
+    
     proxy_init()
 
     config_file = f"{preprocessing_dir}/production_config.json"

@@ -236,7 +236,7 @@ if __name__ == "__main__":
     if signal_point is not None:
         mass_grid = [signal_point]
     else:
-        mass_grid = get_mass_grid(args.mass_grid_version)
+        mass_grid = mass_grids[args.mass_grid_version]
 
     if args.test:
         args.n_total_events = 10
