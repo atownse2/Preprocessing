@@ -1,8 +1,8 @@
 To set up standalone do
 ```bash
-# Create a parent directory
-mkdir RSTriphoton
-cd RSTriphoton
+# Create a parent directory (can be anything)
+mkdir RSTriPhoton
+cd RSTriPhoton
 
 # Clone the repository to preprocessing
 git clone https://github.com/atownse2/Preprocessing.git preprocessing
