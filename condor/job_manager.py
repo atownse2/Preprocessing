@@ -16,7 +16,7 @@ for d in condor_dirs:
     if not os.path.isdir(f'{condordir}/{d}'):
         os.makedirs(f'{condordir}/{d}')
 
-def submit_condor(executable, arguments, job_name):
+def submit_condor(executable, job_name, arguments=None):
     '''Submit a job to condor'''
     
     if not os.path.isfile(executable):
