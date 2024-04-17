@@ -16,26 +16,45 @@ for d in condor_dirs:
     if not os.path.isdir(f'{condordir}/{d}'):
         os.makedirs(f'{condordir}/{d}')
 
-def submit_condor_1(executable, arguments, job_name):
+def submit_condor(executable, arguments, job_name):
     '''Submit a job to condor'''
     
-    if isinstance(arguments, str):
-        arguments = [arguments]
+    if not os.path.isfile(executable):
+        # Create a dummy executable
+        exec_file = f'{condordir}/submit/{job_name}.sh'
+        with open(f, 'w') as f:
+            f.write(f'#!/bin/bash\n{executable}')
+        os.system(f'chmod +x {exec_file}')
+        executable = exec_file
 
-    arg_string = "\n            ".join(arguments)
-    submit = textwrap.dedent(
-        f'''\
-        executable = {executable}
-        output = {condordir}/out/{job_name}_$(Process).out
-        error = {condordir}/err/{job_name}_$(Process).err
-        log = {condordir}/log/{job_name}_$(Process).log
-        request_cpus = 1
-        request_memory = 128MB
-        request_disk = 128MB
-        queue arguments from (
-            {arg_string}
-        )
-        ''')
+    if isinstance(arguments, list):
+        arg_string = "\n            ".join(arguments)
+        submit = textwrap.dedent(
+            f'''\
+            executable = {executable}
+            output = {condordir}/out/{job_name}_$(Process).out
+            error = {condordir}/err/{job_name}_$(Process).err
+            log = {condordir}/log/{job_name}_$(Process).log
+            request_cpus = 1
+            request_memory = 128MB
+            request_disk = 128MB
+            queue arguments from (
+                {arg_string}
+            )
+            ''')
+    else:
+        submit = textwrap.dedent(
+            f'''\
+            executable = {executable}
+            arguments = {arguments}
+            output = {condordir}/out/{job_name}.out
+            error = {condordir}/err/{job_name}.err
+            log = {condordir}/log/{job_name}.log
+            request_cpus = 1
+            request_memory = 128MB
+            request_disk = 128MB
+            queue
+            ''')
 
     submit_file = f'{condordir}/submit/{job_name}.submit'
     with open(submit_file, 'w') as f:

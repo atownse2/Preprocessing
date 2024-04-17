@@ -19,7 +19,7 @@ run_step() {
   local cfg_args=$3
 
   # If output exists skip (useful for debugging)
-  if [ -f "$tmpdir/${step}-0000.root" ]; then
+  if [ -f "$tmpdir/${step}.root" ]; then
     echo "${step} output file already exists, skipping."
     return
   fi
@@ -28,9 +28,9 @@ run_step() {
   cd $releasedir/${release}/src
   eval `scramv1 runtime -sh`
   cd $tmpdir
-  cmsRun $cfgdir/20UL18_${step}_cfg.py $cfg_args
+  cmsRun $cfgdir/2018_${step}_cfg.py $cfg_args
 
-  if [ ! -f "$tmpdir/${step}-0000.root" ]; then
+  if [ ! -f "$tmpdir/${step}.root" ]; then
     echo "${step} output file not found, exiting."
     exit 1
   fi
@@ -42,8 +42,8 @@ run_step "wmLHEGEN" "CMSSW_10_6_17_patch1" $GENargs
 run_step "SIM" "CMSSW_10_6_17_patch1"
 run_step "DIGI" "CMSSW_10_6_17_patch1"
 run_step "HLT" "CMSSW_10_2_16_UL"
-run_step "RECO" "CMSSW_10_6_17_patch1"
-run_step "MAODv2" "CMSSW_10_6_20"
+run_step "AOD" "CMSSW_10_6_17_patch1"
+run_step "MiniAODv2" "CMSSW_10_6_20"
 
 echo "Done with GEN to MiniAOD steps"
 echo "Output is in $tmpdir, you need to do some cleanup..."

@@ -39,9 +39,9 @@ def ensure_dataTools():
 
 def ensure_genproductions():
     # Checkout genproductions
-    print("Setting up genproductions")
     genproductions_dir = f"{tools_dir}/genproductions"
     if not os.path.exists(genproductions_dir):
+        print("Setting up genproductions")
         os.system(f"git clone https://github.com/atownse2/genproductions.git {genproductions_dir}")
 
 def proxy_init():
@@ -67,25 +67,18 @@ def ensure_cmssw(release):
             scram b"""
         )
 
-era_map = {
-    "2018": "20UL18",
-} # For now, will want to standardize this later
-
 def ensure_configs(years):
-    eras = [era_map[year] for year in years]
-    
-    proxy_init()
-
+    proxy = False
     config_file = f"{preprocessing_dir}/production_config.json"
     with open(config_file, "r") as f:
         config = json.load(f)
 
-    for era in eras:
-        if era not in config:
-            print(f"No configuration found for {era}")
+    for year in years:
+        if year not in config:
+            print(f"No configuration found for {year}")
             continue
 
-        for prod_name, prod_config in config[era].items():
+        for prod_name, prod_config in config[year].items():
 
             # Set up CMSSW release
             release = prod_config["release"]
@@ -93,12 +86,16 @@ def ensure_configs(years):
             
             # Create config file
             if not "cmsDriver" in prod_config: continue
-            config_file = f"{config_dir}/{era}_{prod_name}_cfg.py"
+            config_file = f"{config_dir}/{year}_{prod_name}_cfg.py"
             if not os.path.exists(config_file):
+                if not proxy:
+                    proxy_init()
+                    proxy = True
+
                 print(f"Creating config file for {prod_name}")             
                 input_prod = prod_config["input"]
-                infile = f"{input_prod}-0000.root"
-                outfile = f"{prod_name}-0000.root"
+                infile = f"{input_prod}.root"
+                outfile = f"{prod_name}.root"
 
                 cmsDriver_cmd = prod_config["cmsDriver"]
                 cmsDriver_cmd = cmsDriver_cmd.replace("file:step-1.root", f"file:{infile}").replace("step0.root", outfile)
@@ -113,9 +110,9 @@ def ensure_configs(years):
 
 def ensure_MLPhotons():
     # Checkout MLPhotons
-    print("Setting up MLPhotons")
     MLPhotons_dir = f"{tools_dir}/MLPhotons"
     if not os.path.exists(MLPhotons_dir):
+        print("Setting up MLPhotons")
         os.makedirs(MLPhotons_dir)
         try_command(f"""
             cd {MLPhotons_dir}
