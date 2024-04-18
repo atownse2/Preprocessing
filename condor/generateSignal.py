@@ -148,6 +148,8 @@ def generate_signal_point(
     run = "#!/bin/bash\n"
     run += textwrap.dedent(
         f"""
+        source {scripts_dir}/utils.sh
+        
         nEvents=$1
         batch=$2
 
@@ -155,9 +157,6 @@ def generate_signal_point(
         cfgdir={config_dir}
         reldir={release_dir}
         year={year}
-
-        cd {scripts_dir}
-        source utils.sh
 
         ensure_dir $tmpdir
         echo "Starting event generation for {dataset_name}"
@@ -221,7 +220,7 @@ def generate_signal_point(
         return
 
     if condor:
-        jm.submit_condor(gen_evt, args, f'{dataset.name}_{ibatch}')
+        jm.submit_condor(gen_evt, f'{dataset.name}_{ibatch}', arguments=args)
     else:
         for arg in args:
             setup.try_command(f"{gen_evt} {arg}", fail_message="Failed to generate events")
@@ -230,8 +229,6 @@ def generate_signal_point(
 
 
 if __name__ == "__main__":
-
-    import preprocessing.setup as setup
     import argparse
 
     parser = argparse.ArgumentParser(description='Generate MiniAOD signal events')
@@ -241,7 +238,7 @@ if __name__ == "__main__":
     parser.add_argument('--m_moe', nargs=2, type=float, metavar=('M_BKK', 'MOE'), help='Specify a single point in the mass grid to generate events for.')
     parser.add_argument('--mass_grid_version', type=str, default='current', help='Specify the mass grid version to use. Default is current.')
     parser.add_argument('--year', type=str, default='2018', help='Specify the era to use for the fragment. Default is 2018.')
-    parser.add_argument('--output_format', '-f', type=str, default='MLNanoAODv9', help='Specify the output format. Default is MLNanoAODv9.')
+    parser.add_argument('--output_format', '-f', type=str, default='NanoAODv9', help='Specify the output format. Default is MLNanoAODv9.')
     parser.add_argument('--output_base', '-o', type=str, default=sample_info.vast_storage, help='Specify the output base directory. Default is vast.')
     parser.add_argument('--condor', '-c', action='store_true', help='Submit jobs to condor.')
     parser.add_argument('--gridpack_only', '-g', action='store_true', help='Only generate gridpacks. Do not generate events.')
