@@ -2,6 +2,8 @@ import os
 import sys
 import subprocess
 
+import textwrap
+
 import json
 
 preprocessing_dir = os.path.dirname(os.path.abspath(__file__))
@@ -67,18 +69,24 @@ def ensure_cmssw(release):
             scram b"""
         )
 
-def ensure_configs(years):
-    proxy = False
+def get_production_config():
     config_file = f"{preprocessing_dir}/production_config.json"
     with open(config_file, "r") as f:
         config = json.load(f)
+    return config
 
+def ensure_configs(years):
+    proxy = False
+
+    config = get_production_config()
     for year in years:
         if year not in config:
             print(f"No configuration found for {year}")
             continue
 
         for prod_name, prod_config in config[year].items():
+            if prod_name == "MLNanoAODv9":
+                continue
 
             # Set up CMSSW release
             release = prod_config["release"]
@@ -109,22 +117,24 @@ def ensure_configs(years):
                 )
 
 def ensure_MLPhotons():
-    # Checkout MLPhotons
-    MLPhotons_dir = f"{tools_dir}/MLPhotons"
-    if not os.path.exists(MLPhotons_dir):
-        print("Setting up MLPhotons")
-        os.makedirs(MLPhotons_dir)
-        try_command(f"""
-            cd {MLPhotons_dir}
-            cmsrel CMSSW_10_6_19_patch2
+    rel = "CMSSW_10_6_27"
+    ensure_cmssw(rel)
+
+    # Check if MLPhotons is already installed
+    if os.path.exists(f"{release_base}/{rel}/src/README.md"):
+        print("MLPhotons already installed")
+        return
+    
+    cmd = textwrap.dedent(
+        f"""
+        cd {release_base}/{rel}/src
+        git clone https://github.com/atownse2/MLPhotons.git .
+        eval `scram runtime -sh`
+        scram b
+        cp *_MLNanoAODv9_cfg.py {config_dir}/
         """)
 
-        try_command(f"""
-            cd {MLPhotons_dir}/CMSSW_10_6_19_patch2/src
-            git clone https://github.com/atownse2/MLPhotons.git .
-            eval `scram runtime -sh`
-            scram b
-            """)
+    try_command(cmd)
 
 if __name__ == "__main__":
     ensure_dataTools()

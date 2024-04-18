@@ -38,7 +38,7 @@ mass_grids = {
     'current' : get_mass_grid([180, 250, 500, 1000, 1500, 2000, 2500, 3000], [0.04, 0.02, 0.01, 0.005, 0.0025]),
 }
 
-def signal_point_tag(signal_point):
+def signal_point_tag(signal_point, decimal=False):
     M_BKK = signal_point['M_BKK']
     M_R = signal_point['M_R']
     if M_BKK/int(M_BKK) == 1:
@@ -46,7 +46,10 @@ def signal_point_tag(signal_point):
     if int(M_R) != 0 and M_R/int(M_R) == 1:
         M_R = int(M_R)
     
-    tag = f'{signal_tag}_M1-{M_BKK}_R0-{M_R}'.replace('.','p')
+    tag = f'{signal_tag}_M1-{M_BKK}_R0-{M_R}'
+    if decimal == False:
+        tag = tag.replace('.', 'p')
+
     return tag
 
 def m_moe_to_m_m(m_moe):
@@ -57,18 +60,18 @@ def m_moe_to_m_m(m_moe):
 
 
 ## Gridpacks
-def get_gridpack(signal_point, output_base, remake=False, condor=False, test=False):
+def get_gridpack(signal_point, output_base, remake=False, condor=False):
     '''Generate gridpack for a signal point'''
-    if test: output_base += "/test"
+
     gridpackdir = f"{output_base}/gridpacks"
     if not os.path.isdir(gridpackdir):
         os.makedirs(gridpackdir)
 
-    fragment = signal_point_tag(signal_point)
-    gridpath = f'{gridpackdir}/{fragment}_slc7_amd64_gcc10_CMSSW_12_4_8_tarball.tar.xz'
+    gridpath = f'{gridpackdir}/{signal_point_tag(signal_point)}_slc7_amd64_gcc10_CMSSW_12_4_8_tarball.tar.xz'
     if os.path.exists(gridpath) and not remake:
         return gridpath
 
+    fragment = signal_point_tag(signal_point, decimal=True)
     cards_dir = f"cards/production/2017/13TeV/{signal_tag}"
     run_gridpack = textwrap.dedent(
         f"""
@@ -83,7 +86,7 @@ def get_gridpack(signal_point, output_base, remake=False, condor=False, test=Fal
         echo "Generating gridpack for {fragment}"
         cd {mgdir}
         cleanup
-        python {signal_tag}_M1_R0_gen_card.py {signal_point['M_BKK']} {signal_point['M_R']}
+        python {cards_dir}/{signal_tag}_M1_R0_gen_card.py {signal_point['M_BKK']} {signal_point['M_R']}
         ./gridpack_generation.sh {fragment} {cards_dir}/{fragment}
         cp {fragment}_slc7_amd64_gcc10_CMSSW_12_4_8_tarball.tar.xz {gridpath}
         cleanup
@@ -109,38 +112,93 @@ def generate_signal_point(
         output_base=sample_info.vast_storage,
         gridpack_only=False,
         remake_gridpacks=False,
-        saveAOD=False,
-        saveMAOD=True,
+        save_additional_formats=[],
         condor=False,
         remake=False,
-        test=False
+        test=False,
+        no_exec=False
         ):
     
     print(f"Generating {n_events_total} events for signal point {signal_point}...")
 
-    _output_format = output_format
     if test:
-        output_format += "_test"
         output_base += "/test"
 
-    fragment = signal_point_tag(signal_point)
-    dataset_name = f"{fragment}_{year}"
-    if test: dataset_name += "_test"
+    # Set up dataset
+    dataset_name = f"{signal_point_tag(signal_point)}_{year}"
     dataset = sample_info.Dataset(
         "signal", dataset_name, output_format,
-        storage_base=output_base).update_sample_info()
+        storage_base=output_base
+        )
 
-    gridpack_path = get_gridpack(signal_point, output_base, remake=remake_gridpacks, condor=condor, test=test)
+    if not test: dataset.update_sample_info()
+
+    # Get gridpack
+    gridpack_path = get_gridpack(
+        signal_point, output_base,
+        remake=remake_gridpacks,
+        condor=condor
+        )
+    
     if gridpack_only or gridpack_path is None:
         return
 
-    n_to_generate = n_events_total
-    ibatch = -1
-    while n_to_generate > 0:
-        ibatch += 1
+    # Load production config
+    config = setup.get_production_config()
+    run = "#!/bin/bash\n"
+    run += textwrap.dedent(
+        f"""
+        nEvents=$1
+        batch=$2
 
+        tmpdir=/tmp/{USER}/{dataset_name}_$batch
+        cfgdir={config_dir}
+        reldir={release_dir}
+        year={year}
+
+        cd {scripts_dir}
+        source utils.sh
+
+        ensure_dir $tmpdir
+        echo "Starting event generation for {dataset_name}"
+        """)
+
+    # Run event generation steps
+    steps = ["wmLHEGEN", "SIM", "DIGI", "HLT", "AOD", "MiniAODv2"]
+    if output_format not in steps: steps.append(output_format)
+    for step in steps:
+        args = ""
+        if step == "wmLHEGEN":
+            args = f"gridpack={gridpack_path} nEvents=${{nEvents}}"
+
+        step_cfg = config[year][step]
+        run += f'run_step {step} {step_cfg["release"]} "{args}" \n'
+
+    # Save outputs
+    outpath = f"{dataset.storage_dir}/{dataset.name}_$batch.root"
+    formats = [output_format] + save_additional_formats
+    for f in formats:
+        # Ensure output directory exists
+        _outdir = dataset.storage_dir.replace(output_format, f)
+        if not os.path.isdir(_outdir):
+            os.makedirs(_outdir)
+
+        _out = outpath.replace(output_format, f)
+        run += f"cp $tmpdir/{f}.root {_out}\n"
+
+    # Clean up
+    run += f"rm -rf $tmpdir\n"
+    run += f"echo 'Done'\n"
+    
+    # Configure arguments
+    args = []
+
+    n_to_generate = n_events_total
+    ibatch = 0
+    while n_to_generate > 0:
         outfile = f"{dataset.name}_{ibatch}.root"
-        if outfile in dataset.files:
+        if outfile in os.listdir(dataset.storage_dir) and not remake:
+            ibatch += 1
             continue
 
         if n_to_generate < n_events_per_file:
@@ -148,75 +206,28 @@ def generate_signal_point(
         else:
             n = n_events_per_file
         
-        print(f"Generating {n} events for {dataset.name}...")
-
-        tmpdir = f"/tmp/{USER}_{dataset.name}_{ibatch}"
-        GENargs = f"gridpack={gridpack_path} nEvents={n}"
-
-        generate_events = ""
-        if remake:
-            generate_events += textwrap.dedent(f"""
-                if [ -d "{tmpdir}" ]; then
-                    rm -rf {tmpdir}
-                fi
-            """)
-
-        generate_events += f"bash {run_event_generation} {tmpdir} {release_dir} {config_dir} {GENargs}\n"
-        generate_events += textwrap.dedent(f"""
-            if [ ! -f "{tmpdir}/MiniAODv2.root" ]; then
-                echo "MiniAODv2 output file not found, exiting."
-                exit 1
-            fi
-        """)
-
-        if saveAOD:
-            AOD_dataset = sample_info.Dataset(
-                "signal", f"{fragment}_{year}", "AOD",
-                storage_base=output_base)
-        
-            fout = f"{AOD_dataset.storage_dir}/{AOD_dataset.name}_{ibatch}.root"
-            generate_events += f"cp {tmpdir}/AOD.root {fout}\n"
-        if saveMAOD or _output_format == "MiniAODv2":
-            MAOD_dataset = sample_info.Dataset(
-                "signal", f"{fragment}_{year}", "MiniAODv2",
-                storage_base=output_base
-                )
-
-            fout = f"{MAOD_dataset.storage_dir}/{MAOD_dataset.name}_{ibatch}.root"
-            generate_events += f"cp {tmpdir}/MiniAODv2.root {fout}\n"
-        
-        if _output_format == "MLNanoAODv9":
-            generate_events += textwrap.dedent(f"""
-                cd {tools_dir}/MLPhotons/CMSSW_10_6_19_patch2/src
-                eval `scram runtime -sh`
-                cmsRun Prod_MLNanoAODv9_mc.py inputFiles=file:{tmpdir}/MiniAODv2.root outputFile={tmpdir}/MLNanoAODv9.root
-                mv {tmpdir}/MLNanoAODv9.root {dataset.storage_dir}/{outfile}
-            """)
-        elif _output_format == "NanoAODv9":
-            generate_events += textwrap.dedent(f"""
-                cd {release_dir}/CMSSW_10_6_27/src
-                eval `scram runtime -sh`
-                cd {tmpdir}
-                cmsRun {config_dir}/2018_NanoAODv9_cfg.py
-                mv {tmpdir}/NanoAODv9.root {dataset.storage_dir}/{outfile}
-            """)
-        elif _output_format == "MiniAODv2":
-            pass
-        else:
-            raise ValueError(f"Output format {_output_format} not recognized")
-
-        # Clean up
-        generate_events += f"rm -rf {tmpdir}\n"
-        generate_events += f"echo 'Done'\n"
-
-        if condor:
-            jm.submit_condor(generate_events, "", f'{dataset.name}_{ibatch}')
-        else:
-            setup.try_command(generate_events)
-
+        args.append(f"{n} {ibatch}")
         n_to_generate -= n
+        ibatch += 1
 
-    return
+    # Create executable
+    gen_evt = f"{top_dir}/cache/executables/{dataset.name}_generate.sh"
+    with open(gen_evt, "w") as f:
+        f.write(run)
+    os.chmod(gen_evt, 0o755)
+
+    if no_exec:
+        print(f"Executable created: {gen_evt}")
+        return
+
+    if condor:
+        jm.submit_condor(gen_evt, args, f'{dataset.name}_{ibatch}')
+    else:
+        for arg in args:
+            setup.try_command(f"{gen_evt} {arg}", fail_message="Failed to generate events")
+            if test:
+                break
+
 
 if __name__ == "__main__":
 
@@ -236,8 +247,9 @@ if __name__ == "__main__":
     parser.add_argument('--gridpack_only', '-g', action='store_true', help='Only generate gridpacks. Do not generate events.')
     parser.add_argument('--remake_gridpacks', '-r', action='store_true', help='Remake gridpacks even if they already exist.')
     parser.add_argument('--saveAOD', action='store_true', help='Save AOD as well as MiniAOD')
-    parser.add_argument('--saveMAOD', type=bool, default=True, help='Save MiniAOD')
+    parser.add_argument('--saveMiniAODv2', type=bool, default=True, help='Save MiniAOD')
     parser.add_argument('--test', '-t', action='store_true', help='Run in test mode generating events for a single point in the mass grid.')
+    parser.add_argument('--no_exec', action='store_true', help='Do not execute the commands, only create the executable.')
 
     args = parser.parse_args()
 
@@ -263,6 +275,12 @@ if __name__ == "__main__":
     if args.test:
         args.n_total_events = 10
 
+    additional_formats = []
+    if args.saveAOD:
+        additional_formats.append('AOD')
+    if args.saveMiniAODv2:
+        additional_formats.append('MiniAODv2')
+
     # Generate events
     print("Generating signal events with configuration: ")
     print("Number of total events: ", args.n_total_events)
@@ -270,20 +288,21 @@ if __name__ == "__main__":
     print("Year: ", args.year)
     print("Output base: ", args.output_base)
     print("Save AOD: ", args.saveAOD)
-    print("Save MAOD: ", args.saveMAOD)
+    print("Save MAOD: ", args.saveMiniAODv2)
 
     for signal_point in mass_grid:
-        generate_signal_point(signal_point,
-                              args.year,
-                              args.output_format,
-                              args.n_total_events,
-                              n_events_per_file=args.n_events_per_file,
-                              output_base=args.output_base,
-                              gridpack_only=args.gridpack_only,
-                              remake_gridpacks=args.remake_gridpacks,
-                              saveAOD=args.saveAOD,
-                              saveMAOD=args.saveMAOD,
-                              condor=args.condor,
-                              test=args.test)
+        generate_signal_point(
+            signal_point,
+            args.year,
+            args.output_format,
+            args.n_total_events,
+            n_events_per_file=args.n_events_per_file,
+            output_base=args.output_base,
+            gridpack_only=args.gridpack_only,
+            remake_gridpacks=args.remake_gridpacks,
+            save_additional_formats=additional_formats,
+            condor=args.condor,
+            test=args.test,
+            no_exec=args.no_exec)
         if args.test:
             break
