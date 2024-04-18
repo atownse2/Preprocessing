@@ -211,7 +211,7 @@ def generate_signal_point(
         ibatch += 1
 
     # Create executable
-    gen_evt = f"{top_dir}/cache/executables/{dataset.name}_generate.sh"
+    gen_evt = f"{top_dir}/cache/condor/{dataset.name}_generate.sh"
     with open(gen_evt, "w") as f:
         f.write(run)
     os.chmod(gen_evt, 0o755)

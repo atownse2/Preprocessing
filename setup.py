@@ -10,10 +10,12 @@ preprocessing_dir = os.path.dirname(os.path.abspath(__file__))
 top_dir = os.path.dirname(preprocessing_dir)
 
 # Initialize directories
+cache_dir = f"{top_dir}/cache"
+condor_cache = f"{cache_dir}/condor"
 tools_dir = f"{top_dir}/preprocessing/tools"
 release_base = f"{tools_dir}/releases"
 config_dir = f"{tools_dir}/configs"
-for d in [tools_dir, release_base, config_dir]:
+for d in [tools_dir, release_base, config_dir, condor_cache]:
     if not os.path.exists(d):
         os.makedirs(d)
 

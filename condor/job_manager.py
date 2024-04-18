@@ -1,17 +1,25 @@
 import os
+import sys
+
 import time
+
+preprocessing_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+top_dir = os.path.dirname(preprocessing_dir)
+sys.path.append(top_dir)
 
 # import htcondor
 import signal
 
 import textwrap
 
+from preprocessing.setup import condor_cache
+
 # find . -type d -exec fs setacl {} nd_campus rlidw \;
 
 USER=os.environ['USER']
 condordir = f'/scratch365/{USER}/RSTriPhoton/condor'
 
-condor_dirs = ['submit', 'log', 'err', 'out']
+condor_dirs = ['log', 'err', 'out']
 for d in condor_dirs:
     if not os.path.isdir(f'{condordir}/{d}'):
         os.makedirs(f'{condordir}/{d}')
@@ -21,7 +29,7 @@ def submit_condor(executable, job_name, arguments=None):
     
     if not os.path.isfile(executable):
         # Create a dummy executable
-        exec_file = f'{condordir}/submit/{job_name}.sh'
+        exec_file = f'{condor_cache}/{job_name}.sh'
         with open(f, 'w') as f:
             f.write(f'#!/bin/bash\n{executable}')
         os.system(f'chmod +x {exec_file}')
@@ -56,7 +64,7 @@ def submit_condor(executable, job_name, arguments=None):
             queue
             ''')
 
-    submit_file = f'{condordir}/submit/{job_name}.submit'
+    submit_file = f'{condor_cache}/{job_name}.submit'
     with open(submit_file, 'w') as f:
         f.write(submit)
     
