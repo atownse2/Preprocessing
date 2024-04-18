@@ -47,8 +47,8 @@ import os
 CMSSW_BASE = os.environ['CMSSW_BASE']
 process.mlphotons = cms.EDProducer("MLPhotonProducer",
     collectionLabel = cms.string("mlphotons"),
-    classifierPath = cms.string(CMSSW_BASE+"src/RecoEgamma/EgammaMLPhotonProducers/data/classifier.onnx"), # This should be hardcoded?
-    regressorPath = cms.string(CMSSW_BASE+"src/RecoEgamma/EgammaMLPhotonProducers/data/regressor.onnx"),
+    classifierPath = cms.string(CMSSW_BASE+"/src/RecoEgamma/EgammaMLPhotonProducers/data/classifier.onnx"), # This should be hardcoded?
+    regressorPath = cms.string(CMSSW_BASE+"/src/RecoEgamma/EgammaMLPhotonProducers/data/regressor.onnx"),
     clusterInputTag = cms.InputTag('reducedEgamma', 'reducedEBEEClusters', 'PAT'),
     HEEInputTag = cms.InputTag('reducedEgamma', 'reducedEERecHits', 'PAT'),
     HEBInputTag = cms.InputTag('reducedEgamma', 'reducedEBRecHits', 'PAT'),

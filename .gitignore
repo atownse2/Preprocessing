@@ -2,5 +2,5 @@ __pycache__
 old/
 tools/releases/
 tools/genproductions/
-tools/MLPhotons/
+tools/MLPhotons
 *.pyc

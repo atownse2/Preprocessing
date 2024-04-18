@@ -137,6 +137,10 @@ def ensure_MLPhotons():
         """)
 
     try_command(cmd)
+    
+    # Create symbolic link to MLPhotons
+    if not os.path.exists(f"{tools_dir}/MLPhotons"):
+        os.system(f"ln -s {release_base}/{rel}/src {tools_dir}/MLPhotons")
 
 if __name__ == "__main__":
     ensure_dataTools()
