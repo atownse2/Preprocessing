@@ -35,7 +35,7 @@ def get_mass_grid(BKKs, MOEs):
 
 mass_grids = {
     'old' : get_mass_grid([180, 250, 500, 1000, 3000], [0.04, 0.02, 0.01, 0.005, 0.0025]),
-    'current' : get_mass_grid([180, 250, 500, 1000, 1500, 2000, 2500, 3000], [0.04, 0.02, 0.01, 0.005, 0.0025]),
+    'current' : get_mass_grid([20, 50, 100, 130, 150, 200, 750, 2000], [0.05, 0.04, 0.03, 0.02, 0.015, 0.01, 0.005, 0.0025, 0.0015, 0.0005]),
 }
 
 def signal_point_tag(signal_point, decimal=False):
@@ -43,8 +43,8 @@ def signal_point_tag(signal_point, decimal=False):
     M_R = signal_point['M_R']
     if M_BKK/int(M_BKK) == 1:
         M_BKK = int(M_BKK)
-    if int(M_R) != 0 and M_R/int(M_R) == 1:
-        M_R = int(M_R)
+    # if int(M_R) != 0 and M_R/int(M_R) == 1:
+    #     M_R = int(M_R)
     
     tag = f'{signal_tag}_M1-{M_BKK}_R0-{M_R}'
     if decimal == False:
@@ -232,7 +232,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='Generate MiniAOD signal events')
-    parser.add_argument('--n_total_events', '-n', type=int, default=10, help='Number of events to have per mass point.')
+    parser.add_argument('--n_total_events', '-n', type=int, default=1000, help='Number of events to have per mass point.')
     parser.add_argument('--n_events_per_file', '-nf', type=int, default=1000, help='Number of events per file.')
     parser.add_argument('--m_m' , nargs=2, type=float, metavar=('M_BKK', 'M_R'), help='Specify a single point in the mass grid to generate events for.')
     parser.add_argument('--m_moe', nargs=2, type=float, metavar=('M_BKK', 'MOE'), help='Specify a single point in the mass grid to generate events for.')

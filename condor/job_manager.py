@@ -6,6 +6,8 @@ import time
 preprocessing_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 top_dir = os.path.dirname(preprocessing_dir)
 sys.path.append(top_dir)
+# print(preprocessing_dir)
+# print(top_dir)
 
 # import htcondor
 import signal
@@ -30,7 +32,7 @@ def submit_condor(executable, job_name, arguments=None):
     if not os.path.isfile(executable):
         # Create a dummy executable
         exec_file = f'{condor_cache}/{job_name}.sh'
-        with open(f, 'w') as f:
+        with open(exec_file, 'w') as f:
             f.write(f'#!/bin/bash\n{executable}')
         os.system(f'chmod +x {exec_file}')
         executable = exec_file
