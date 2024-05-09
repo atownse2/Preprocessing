@@ -48,6 +48,9 @@ def ensure_genproductions():
         print("Setting up genproductions")
         os.system(f"git clone https://github.com/atownse2/genproductions.git {genproductions_dir}")
 
+    # Make sure condor can write to the MadGraph directory
+    os.system(f"fs setacl {genproductions_dir}/bin/MadGraph5_aMCatNLO/ nd_campus rlidw")
+
 def proxy_init():
     # Initialize proxy
     print("Check if proxy exists")

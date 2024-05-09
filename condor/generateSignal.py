@@ -109,7 +109,7 @@ def generate_signal_point(
         output_format,
         n_events_total,
         n_events_per_file=1000,
-        output_base=sample_info.vast_storage,
+        output_base=sample_info.local_storage,
         gridpack_only=False,
         remake_gridpacks=False,
         save_additional_formats=[],
@@ -239,7 +239,7 @@ if __name__ == "__main__":
     parser.add_argument('--mass_grid_version', type=str, default='current', help='Specify the mass grid version to use. Default is current.')
     parser.add_argument('--year', type=str, default='2018', help='Specify the era to use for the fragment. Default is 2018.')
     parser.add_argument('--output_format', '-f', type=str, default='NanoAODv9', help='Specify the output format. Default is MLNanoAODv9.')
-    parser.add_argument('--output_base', '-o', type=str, default=sample_info.vast_storage, help='Specify the output base directory. Default is vast.')
+    parser.add_argument('--output_base', '-o', type=str, default=sample_info.local_storage, help='Specify the output base directory. Default is vast.')
     parser.add_argument('--condor', '-c', action='store_true', help='Submit jobs to condor.')
     parser.add_argument('--gridpack_only', '-g', action='store_true', help='Only generate gridpacks. Do not generate events.')
     parser.add_argument('--remake_gridpacks', '-r', action='store_true', help='Remake gridpacks even if they already exist.')

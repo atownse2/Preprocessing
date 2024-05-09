@@ -1,20 +1,12 @@
 import os
 import sys
-
-import time
+import textwrap
 
 preprocessing_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 top_dir = os.path.dirname(preprocessing_dir)
 sys.path.append(top_dir)
 
-# import htcondor
-import signal
-
-import textwrap
-
 from preprocessing.setup import condor_cache
-
-# find . -type d -exec fs setacl {} nd_campus rlidw \;
 
 USER=os.environ['USER']
 condordir = f'/scratch365/{USER}/RSTriPhoton/condor'
